@@ -1,7 +1,7 @@
 """
 Консольный скрипт, который запускается из терминала 
 Пример запуска из терминала:
-$ python ./scan-dir-size.py C:\\Users\\79177\\Developer\\Занятия
+$ python ./scan-dir-size.py C:\\Users\\79177\\Developer
 
 Необходимые функции для реализации:
 sys.argv - получает аргументы командной строки (путь к C:\\Users\\79177)
@@ -20,21 +20,25 @@ dir_entry - Объект, у которого есть следующие пол
 2) dir_entry.is_symlink() - возвращает True, если данная entry - symlink
 3) dir_entry.stat() - возвращает объект типа stat_result, у кот есть полезное св-во st_size (р-р файлов в байтах) - это int
 """
+
 import os
 import sys
+import configparser
+import codecs
+
 MAX_DEPTH = 1_000
+
+
 def get_icon_by_filename(filename: str) -> str:
-    if filename.lower().endswith((".jpg", ".jpeg", ".png")):
-        return "🖼️  "
-    if filename.lower().endswith((".mp3",".wav", ".aac", ".flac")):
-        return "🎵 "
-    if filename.lower().endswith((".doc",".docx", ".txt", ".pdf")):
-        return "📕 "
-    if filename.lower().endswith((".py")):
-        return "💻 " 
-    if filename.lower().endswith((".mp4", ".avi", ".mov", ".wmv")):
-        return "📽️  "
+    global config
+    file_extension = filename.lower().split(".")[-1]
+    for section in config.sections():
+        section_extensions = config[section]["extensions"].split(", ")
+        # print(section_extensions)
+        if file_extension in section_extensions:
+            return config[section]["icon"] + " " * int(config[section]["offset"])
     return "❓ "
+
 
 def rec_scan(cur_dir: str, depth: int) -> None:
     if depth == MAX_DEPTH:
@@ -56,7 +60,7 @@ def rec_scan(cur_dir: str, depth: int) -> None:
             elif dir_entry.is_symlink():
                 count_skipped += 1
                 print(f"[INFO] {dir_entry.name} is symlink, skipped")
-            else: # dir_entry  - это файл,можно считать размер в total size
+            else:  # dir_entry  - это файл, можно считать размер в total size
                 files.append(dir_entry.name)
                 count_files += 1
                 total_size_in_bytes += dir_entry.stat().st_size
@@ -76,9 +80,15 @@ def rec_scan(cur_dir: str, depth: int) -> None:
                 sep = "├── "
             icon = get_icon_by_filename(files[i])
             print(f"{'│   ' * depth}{sep}{icon}{files[i]}")
-        
-     
-base_dir = sys.argv[1] # путь к папке, для кот мы д посчитать р-р
+
+
+config = configparser.ConfigParser()
+config.read_file(codecs.open("config.ini", "r", "utf8"))
+# print(config.sections())
+# print(config["audio"]["extensions"])
+# print(config["audio"]["icon"])
+# exit()
+base_dir = sys.argv[1]  # путь к папке, для которой мы должны посчитать размер
 count_files = 0
 total_size_in_bytes = 0
 count_skipped = 0
